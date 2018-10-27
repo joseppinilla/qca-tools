@@ -71,6 +71,10 @@ class QCANetwork(nx.Graph):
         active_cells, reduced_qca_adj = self.get_reduced_qca_adj()
 
         h = {c:float(h_vect[c]) for c in active_cells}
+
+        self.remove_nodes_from(self.fixed)
+        self.remove_nodes_from(self.drivers)        
+
         self.h = h
         for x, val in h.items():
             self.add_edge(x,x,weight=val)
@@ -112,4 +116,4 @@ if __name__ == "__main__":
     plt.gca().invert_yaxis()
     plt.show()
 
-    write_networkx(G, pos=pos, mtx_name=base+'_G', mm_dir=bench_dir)
+    write_networkx(G, pos=pos, mtx_name=base, mm_dir=bench_dir)
