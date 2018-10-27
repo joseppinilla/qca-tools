@@ -21,11 +21,6 @@ class QCANetwork(nx.Graph):
 
         nx.Graph.__init__(self, J_mtx)
 
-        self.pos = {}
-        for cell in self.cells:
-            num = cell['num']
-            self.pos[num] = cell['x'], cell['y']
-
         # create graph
         n, m = J_mtx.shape
 
@@ -73,7 +68,12 @@ class QCANetwork(nx.Graph):
         h = {c:float(h_vect[c]) for c in active_cells}
 
         self.remove_nodes_from(self.fixed)
-        self.remove_nodes_from(self.drivers)        
+        self.remove_nodes_from(self.drivers)
+
+        self.pos = {}
+        for num in active_cells:
+            cell = cells[num]
+            self.pos[num] = cell['x'], cell['y']
 
         self.h = h
         for x, val in h.items():
@@ -83,6 +83,7 @@ class QCANetwork(nx.Graph):
         for u,v in self.edges():
             if u in reduced_qca_adj and v in reduced_qca_adj:
                 J[(u,v)] = J_mtx[u,v]
+
         self.J = J
 
     def qca_layout(self):
