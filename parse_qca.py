@@ -249,7 +249,7 @@ def build_J(cells, spacing, r_max=R_MAX):
             J[i,j] = J[j,i] = Ek
 
     # remove very weak interactions
-    J = J*(np.abs(J) >= np.max(np.abs(J)*EK_THRESH))
+    J = -J*(np.abs(J) >= np.max(np.abs(J)*EK_THRESH))
 
     return J
 
@@ -367,16 +367,15 @@ def zone_cells(cells, spacing, show=False):
     return order, J, feedback
 
 
-def reorder_cells(cells, J, flipy=False):
+def reorder_cells(cells, J):
     '''Renumber cells by position rather than the default QCADesigner placement
     order. Cells ordered by the tuple (zone, y, x)'''
 
     keys = {}
-    ysgn = -1 if flipy else 1
 
     # assign sortable tuples for each cell
     for ind, cell in enumerate(cells):
-        keys[ind] = (ysgn*cell['y'], cell['x'])
+        keys[ind] = (cell['y'], cell['x'])
 
     order = list(zip(*sorted([(keys[i], i) for i in keys])))[1]
 

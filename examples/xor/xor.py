@@ -5,12 +5,16 @@ from embedding_methods.utilities.graph_mmio import read_networkx
 from dimod.reference.samplers.exact_solver import ExactSolver
 from dimod.reference.samplers.simulated_annealing import SimulatedAnnealingSampler
 
-bench_dir = '../benchmarks/'
-mm_name = 'SRFlipFlop'
+#%matplotlib tk
+
+bench_dir = '../../benchmarks/'
+mm_name = 'xor'
 
 Sg = read_networkx(mm_name,mm_dir=bench_dir)
+pos = Sg.graph['pos']
 plt.figure(1)
-nx.draw(Sg, pos=Sg.graph['pos'], with_labels=True)
+nx.draw(Sg, pos=pos, with_labels=True)
+plt.gca().invert_yaxis()
 plt.show()
 
 h = {}
@@ -24,7 +28,7 @@ for u,v,data in Sg.edges(data=True):
 #sampler = SimulatedAnnealingSampler()
 sampler = ExactSolver()
 
-#response = sampler.sample_ising(h,J,num_reads=200)
+#response = sampler.sample_ising(h,J,num_reads=100)
 response = sampler.sample_ising(h,J)
 
 import pickle
@@ -37,4 +41,18 @@ with open('response.pkl','wb') as fp:
 energies = [datum.energy for datum in response.data()]
 plt.figure(2)
 _ = plt.hist(energies, bins=100)
+plt.savefig('response.png')
+
+with open('response.pkl','rb') as fp:
+    response = pickle.load(fp)
+
+data10 = []
+for i in range(10):
+    data10.append( next(response.data()) )
+
+sample = data10[0].sample
+
+plt.figure(3)
+nx.draw(Sg, pos=pos, labels=sample, with_labels=True)
+_ = nx.draw_networkx_edge_labels(Sg,pos=pos,edge_labels=J)
 plt.show()

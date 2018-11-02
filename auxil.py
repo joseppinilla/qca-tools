@@ -9,7 +9,7 @@
 #---------------------------------------------------------
 
 import numpy as np
-from copy import deepcopy as dc
+from copy import deepcopy
 from heapq import heappop, heappush
 from collections import defaultdict
 
@@ -293,9 +293,9 @@ def qca_to_coef(cells, spacing, J, adj=None):
         elif adj=='lim':
             J_ = convert_to_lim_adjacency(J, Js, T, A, DX, DY)
         else:
-            J_ = dc(J)
+            J_ = deepcopy(J)
     else:
-        J_ = dc(J)
+        J_ = deepcopy(J)
 
     # separate indices of driver/fixed cells from normal/output cells
     dinds, inds = [], []
