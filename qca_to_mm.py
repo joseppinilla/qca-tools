@@ -1,5 +1,3 @@
-%matplotlib tk
-
 import os
 import numpy as np
 import networkx as nx
@@ -17,7 +15,7 @@ ROUND_VAL = 8
 
 class QCANetwork(nx.Graph):
 
-    def __init__(self, qca_file=None, full_adj=True, pols={}):
+    def __init__(self, qca_file=None, full_adj=True, pols={}, ancilla=True):
 
         # properties of network
         self.full_adj = full_adj
@@ -52,43 +50,68 @@ class QCANetwork(nx.Graph):
 
         n, m = J_mtx.shape
 
-        # set up input polarization vector
-        P = np.asmatrix(np.zeros([n, 1], dtype=float))
-
-        # fixed cell contributions
-        for num in self.fixed:
-            P[num] = cells[num]['pol']
-
-        # driver cell contributions
+        # driver cell polarizations
         for num in self.drivers:
             cname = cells[num]['name']
-            pol = pols.setdefault(cname, input('Input polarization for %s(%s):' % (cname,num)))
-            P[num] = pol
+            pols[cname] = pols.get(cname, float(input('Input polarization for %s(%s):' % (cname,num))))
 
-        active_cells = self.normal.union(self.outputs)
+        if not ancilla:
+            # set up input polarization vector
+            P = np.asmatrix(np.zeros([n, 1], dtype=float))
+
+            # fixed cell contributions
+            for num in self.fixed:
+                P[num] = cells[num]['pol']
+
+            # driver cell contributions
+            for num in self.drivers:
+                cname = cells[num]['name']
+                P[num] = pols[cname]
+
+            active_cells = self.normal.union(self.outputs)
+
+            # Only for active cells
+            # get h coefficients
+            h_vect = np.round(np.asmatrix(J_mtx)*P, ROUND_VAL)
+            h = {c:float(h_vect[c]) for c in active_cells}
+
+            # get J coefficients.
+            J = {}
+            for u in active_cells:
+                for v in self.qca_adj[u]:
+                    if (v in active_cells) and (u < v):
+                        J[(u,v)] = np.round(J_mtx[u,v], ROUND_VAL)
+
+            # Create Graph from Ising model
+            nx.Graph.__init__(self)
+            for v, val in h.items():
+                self.add_edge(v, v, weight=val)
+            for edge, val in J.items():
+                self.add_edge(*edge, weight=val)
+
+        else:
+            # set values of ancillas in matrix
+            for num in self.fixed:
+                pol = cells[num]['pol']
+                J_mtx[num,num] = -pol
+            for num in self.drivers:
+                cname = cells[num]['name']
+                pol = pols[cname]
+                J_mtx[num,num] = -pol
+
+            # Create Graph
+            nx.Graph.__init__(self, J_mtx)
+            # Create Ising model from Graph
+            h = {u:data['weight'] for u,v,data in self.edges(data=True) if u==v}
+            J = {(u,v):data['weight'] for u,v,data in self.edges(data=True) if u!=v}
+
+            active_cells = set(self.nodes())
+
+        self.h = h
+        self.J = J
         self.active_cells = active_cells
 
-        # get h coefficients
-        h_vect = np.round(np.asmatrix(J_mtx)*P, ROUND_VAL)
-        h = {c:float(h_vect[c]) for c in active_cells}
-        self.h = h
-
-        # get J coefficients.
-        J = {}
-        for u in active_cells:
-            for v in self.qca_adj[u]:
-                if (v in active_cells) and (u < v):
-                    J[(u,v)] = np.round(J_mtx[u,v], ROUND_VAL)
-        self.J = J
-
-        # Create Graph from Ising model
-        nx.Graph.__init__(self)
-        for v, val in h.items():
-            self.add_edge(v, v, weight=val)
-        for edge, val in J.items():
-            self.add_edge(*edge, weight=val)
-
-        # Store positions with driver and fixed cells removed
+        # cell positions
         self.pos = {}
         for num in active_cells:
             cell = cells[num]
@@ -102,10 +125,10 @@ if __name__ == "__main__":
 
     bench_dir = './benchmarks/'
     #fn = 'SRFlipFlop.qca'
-    #fn = 'mux2to1.qca'
+    fn = 'mux2to1.qca'
     #fn = 'NOT.qca'
     #fn = 'AND4.qca'
-    fn = 'half_adder.qca'
+    #fn = 'half_adder.qca'
 
     base, ext = os.path.splitext(fn)
     if not os.path.exists(bench_dir):
@@ -118,6 +141,7 @@ if __name__ == "__main__":
     nx.draw(G, pos=pos, labels=G.h)
     _ = nx.draw_networkx_edge_labels(G,pos=pos, edge_labels=G.J)
     plt.gca().invert_yaxis()
+    plt.show()
 
     pols = G.pols
 

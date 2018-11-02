@@ -49,6 +49,3 @@ plt.figure(3)
 nx.draw(Sg, pos=Sg.graph['pos'], labels=sample, with_labels=True)
 plt.gca().invert_yaxis()
 plt.show()
-
-for datum in  response.data():
-    print(datum)
