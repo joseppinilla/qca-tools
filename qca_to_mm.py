@@ -53,7 +53,8 @@ class QCANetwork(nx.Graph):
         # driver cell polarizations
         for num in self.drivers:
             cname = cells[num]['name']
-            pols[cname] = pols.get(cname, float(input('Input polarization for %s(%s):' % (cname,num))))
+            if cname not in pols:
+                pols[cname] = float(input('Input polarization for %s(%s):' % (cname,num)))
 
         if not ancilla:
             # set up input polarization vector
@@ -121,30 +122,30 @@ class QCANetwork(nx.Graph):
         return self.pos
 
 
-if __name__ == "__main__":
-
-    bench_dir = './benchmarks/'
-    #fn = 'SRFlipFlop.qca'
-    fn = 'mux2to1.qca'
-    #fn = 'NOT.qca'
-    #fn = 'AND4.qca'
-    #fn = 'half_adder.qca'
-
-    base, ext = os.path.splitext(fn)
-    if not os.path.exists(bench_dir):
-        os.makedirs(bench_dir)
-
-    G = QCANetwork(qca_file=bench_dir+fn)
-
-    pos = G.qca_layout()
-
-    nx.draw(G, pos=pos, labels=G.h)
-    _ = nx.draw_networkx_edge_labels(G,pos=pos, edge_labels=G.J)
-    plt.gca().invert_yaxis()
-    plt.show()
-
-    pols = G.pols
-
-    comments = "Source: %s\nPolarizations: %s" % (fn, pols)
-
-    write_networkx(G, pos=pos, mtx_name=base, mm_dir=bench_dir, comment=comments)
+# if __name__ == "__main__":
+#
+#     bench_dir = './benchmarks/'
+#     fn = 'SRFlipFlop.qca'
+#     #fn = 'mux2to1.qca'
+#     #fn = 'NOT.qca'
+#     #fn = 'AND4.qca'
+#     #fn = 'half_adder.qca'
+#
+#     base, ext = os.path.splitext(fn)
+#     if not os.path.exists(bench_dir):
+#         os.makedirs(bench_dir)
+#
+#     G = QCANetwork(qca_file=bench_dir+fn)
+#
+#     pos = G.qca_layout()
+#
+#     nx.draw(G, pos=pos, labels=G.h)
+#     _ = nx.draw_networkx_edge_labels(G,pos=pos, edge_labels=G.J)
+#     plt.gca().invert_yaxis()
+#     plt.show()
+#
+#     pols = G.pols
+#
+#     comments = "Source: %s\nPolarizations: %s" % (fn, pols)
+#
+#     write_networkx(G, pos=pos, mtx_name=base, mm_dir=bench_dir, comment=comments)
