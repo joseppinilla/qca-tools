@@ -34,7 +34,7 @@ CELL_MODES = {'QCAD_CELL_MODE_NORMAL': 0,
               'QCAD_CELL_MODE_VERTICAL': 2,
               'QCAD_CELL_MODE_CLUSTER': 3}
 
-R_MAX = 2.1         # max cell-cell interaction range (rel to grid spacing)
+R_MAX = 2.5         # max cell-cell interaction range (rel to grid spacing)
 EK_THRESH = 1e-3    # threshold for included Ek, relative to max(abs(Ek))
 X_ROUND = 4         # places to round to when deciding if cell is rotated
 
