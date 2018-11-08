@@ -4,18 +4,16 @@ import networkx as nx
 
 import matplotlib.pyplot as plt
 
-from parse_qca import parse_qca_file
+from qca_tools.parse_qca import parse_qca_file
 
 from embedding_methods.utilities.graph_mmio import write_networkx
-
+from dimod import BinaryQuadraticModel, Vartype
 
 ROUND_VAL = 8
 
-#class QCANetworkX(QCANetwork, nx.Graph):
+class QCANetwork(BinaryQuadraticModel):
 
-class QCANetwork(nx.Graph):
-
-    def __init__(self, qca_file=None, full_adj=True, pols={}, ancilla=True):
+    def __init__(self, qca_file, full_adj=True, pols={}, ancilla=True):
 
         # properties of network
         self.full_adj = full_adj
@@ -100,16 +98,18 @@ class QCANetwork(nx.Graph):
                 pol = pols[cname]
                 J_mtx[num,num] = -pol
 
-            # Create Graph
-            nx.Graph.__init__(self, J_mtx)
-            # Create Ising model from Graph
-            h = {u:data['weight'] for u,v,data in self.edges(data=True) if u==v}
-            J = {(u,v):data['weight'] for u,v,data in self.edges(data=True) if u!=v}
+            BinaryQuadraticModel.__init__(self,{},{},0.0,Vartype.SPIN)
 
-            active_cells = set(self.nodes())
+            variable_order = list(range(n))
 
-        self.h = h
-        self.J = J
+            for (row, col), bias in np.ndenumerate(J_mtx):
+                if row == col:
+                    self.add_variable(variable_order[row], bias)
+                elif bias:
+                    self.add_interaction(variable_order[row], variable_order[col], bias)
+
+            active_cells = self.fixed.union(self.normal, self.outputs, self.drivers)
+
         self.active_cells = active_cells
 
         # cell positions
@@ -120,3 +120,41 @@ class QCANetwork(nx.Graph):
 
     def qca_layout(self):
         return self.pos
+
+class QCANetworkX(nx.Graph):
+    def __init__(self, qca_file, full_adj=True, pols={}, ancilla=True):
+        QCA = QCANetwork(qca_file, full_adj, pols, ancilla)
+        self.QCA =  QCA
+
+        nx.Graph.__init__(self)
+        for v, val in QCA.linear.items():
+            self.add_edge(v, v, weight=val)
+        for edge, val in QCA.quadratic.items():
+            self.add_edge(*edge, weight=val)
+
+        pos = QCA.qca_layout()
+        self.pos = pos
+
+    def draw_qca(self):
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            raise ImportError("Matplotlib required for draw_qca()")
+        except RuntimeError:
+            print("Matplotlib unable to open display")
+            raise
+
+        cf = plt.gcf()
+        ax = cf.gca()
+        nx.draw_networkx(self, pos=self.pos, with_labels=True, node_shape='s')
+        ax.set_axis_off()
+        ax.invert_yaxis()
+
+        #TODO: Colors for each cell type
+
+
+if __name__ == "__main__":
+    # QCA = QCANetwork('../examples/benchmarks/NOT_FT.qca')
+    QCA = QCANetworkX('../examples/benchmarks/NOT_FT.qca')
+    QCA.draw_qca()
+    plt.show()

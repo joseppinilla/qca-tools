@@ -408,9 +408,6 @@ def parse_qca_file(fn, verbose=False):
     if verbose:
         print('Parsed QCA file...')
 
-    for cell in cells:
-        cell['clk'] = 0
-
     # construct J matrix
     J = build_J(cells, spacing)
 
