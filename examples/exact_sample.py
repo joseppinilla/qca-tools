@@ -14,8 +14,8 @@ from dimod.reference.samplers.simulated_annealing import SimulatedAnnealingSampl
 
 bench_dir = './benchmarks/'
 #solver = 'dwave'
-solver = 'exact'
-#solver = 'sa'
+#solver = 'exact'
+solver = 'sa'
 
 
 def sample(mm_name, dir):
@@ -48,7 +48,7 @@ def sample(mm_name, dir):
     if solver=='exact':
         response = sampler.sample_ising(h,J)
     else:
-        response = sampler.sample_ising(h,J,num_reads=500)
+        response = sampler.sample_ising(h,J,num_reads=1)
 
 
     with open(dir + 'problem.pkl','wb') as fp:
@@ -77,11 +77,11 @@ if __name__ == "__main__":
     EXHAUSTIVE = False
 
     benchmarks = []
-    benchmarks.append('NOT_FT')
+    # benchmarks.append('NOT_FT')
     # benchmarks.append('MAJ5_A')
     # benchmarks.append('MAJ5_B')
     # benchmarks.append('MUX')
-    # benchmarks.append('COPLANARX')
+    benchmarks.append('COPLANARX')
 
     # Vector inputs
     vectors = { 'NOT_FT':[  {'A':-1}, {'A':1}],
@@ -115,9 +115,9 @@ if __name__ == "__main__":
                 os.makedirs(dir)
 
             G = QCANetworkX(bench_dir+name+'.qca', pols=pol)
-            pos = G.qca_layout()
+            G.draw_qca()
             comments = "Source: %s\nPolarizations: %s" % (name, pol)
 
-            write_networkx(G, pos=pos, mtx_name=name, mm_dir=dir, comment=comments)
+            write_networkx(G, pos=G.pos, mtx_name=name, mm_dir=dir, comment=comments)
 
             sample(name, dir)

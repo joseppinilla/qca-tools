@@ -2,3 +2,7 @@
 *.mtx
 *.pkl
 *.png
+build/
+dist/
+*.txt
+qca_tools.egg-info/

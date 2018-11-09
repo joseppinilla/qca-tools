@@ -3,9 +3,7 @@
 from setuptools import setup
 
 packages = ['qca_tools',
-			'qca_tools.composite',
-			'qca_tools.drawing',
-		]
+			'qca_tools.composite']
 
 install_requires = ['networkx>=2.0,<3.0',
                     'decorator>=4.1.0,<5.0.0',
