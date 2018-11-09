@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import networkx as nx
-
+import matplotlib.markers as markers
 import matplotlib.pyplot as plt
 
 from qca_tools.parse_qca import parse_qca_file
@@ -154,38 +154,64 @@ class QCANetworkX(nx.Graph):
         cf = plt.gcf()
         ax = cf.gca()
 
-        node_color = []
-        for node in self.nodes:
-            if node in QCA.drivers:
-                node_color.append('blue')
-            elif node in QCA.outputs:
-                node_color.append('yellow')
-            elif node in QCA.fixed:
-                node_color.append('orange')
-            elif node in QCA.normal:
-                node_color.append('green')
+        # draw nodes
+        deg0_cells = [cell['num'] for cell in QCA.cells if not cell['rot']]
+        deg0_color = []
+        for cell in deg0_cells:
+            if cell in QCA.drivers:
+                deg0_color.append('blue')
+            elif cell in QCA.outputs:
+                deg0_color.append('yellow')
+            elif cell in QCA.fixed:
+                deg0_color.append('orange')
+            elif cell in QCA.normal:
+                deg0_color.append('green')
 
-        weights = nx.get_edge_attributes(self,'weight')
-        edge_color = list(weights.values())
-        edge_vmin = min(QCA.quadratic.values())
-        edge_vmax = max(QCA.quadratic.values())
+        deg45_cells = [cell['num'] for cell in QCA.cells if cell['rot']]
+        deg45_color = []
+        for cell in deg45_cells:
+            if cell in QCA.drivers:
+                deg45_color.append('blue')
+            elif cell in QCA.outputs:
+                deg45_color.append('yellow')
+            elif cell in QCA.fixed:
+                deg45_color.append('orange')
+            elif cell in QCA.normal:
+                deg45_color.append('green')
 
-        params = {  'pos': pos,
-                    'node_shape': '$\u2683$', #TODO: if node is rotated?
-                    'with_labels': True,
-                    'node_color': node_color,
-                    'node_size': QCA.spacing*100,
-                    'width': 4,
-                    'edge_color': edge_color,
-                    'edge_cmap': plt.cm.RdBu,
-                    'edge_vmin': edge_vmin,
-                    'edge_vmax': edge_vmax
-                     }
+        node_params = { 'pos': pos,
+                        'with_labels': True,
+                        'node_size': QCA.spacing*100
+                        }
 
         if with_biases:
             params['labels'] = {v:weights[v,v] for v in self}
 
-        nx.draw_networkx(self, **params)
+        node_shape = markers.MarkerStyle(marker='$\u2683$')
+        nx.draw_networkx_nodes( deg0_cells,
+                                node_color=deg0_color,
+                                node_shape=node_shape,
+                                **node_params)
+        node_shape._transform = node_shape.get_transform().rotate_deg(45)
+        nx.draw_networkx_nodes( deg45_cells,
+                                node_color=deg45_color,
+                                node_shape=node_shape,
+                                **node_params)
+
+        # draw edges
+        weights = nx.get_edge_attributes(self,'weight')
+        edge_color = list(weights.values())
+        edge_vmin = min(QCA.quadratic.values())
+        edge_vmax = max(QCA.quadratic.values())
+        edge_params = { 'pos': pos,
+                        'width': 4,
+                        'edge_color': edge_color,
+                        'edge_cmap': plt.cm.RdBu,
+                        'edge_vmin': edge_vmin,
+                        'edge_vmax': edge_vmax
+                        }
+
+        nx.draw_networkx_edges(self, **edge_params)
 
 
         if with_weights:
@@ -197,11 +223,9 @@ class QCANetworkX(nx.Graph):
 
     @classmethod
     def from_qca_network(cls, QCA):
-
         self.QCA = QCA
 
 
 if __name__ == "__main__":
     QCA = QCANetworkX('../examples/benchmarks/NOT_FT.qca', ancilla=True)
     QCA.draw_qca()
-    plt.show()

@@ -22,4 +22,6 @@ ground_state, energy, _ = response.first
 
 # Draw QCA Network with solution state
 problem = qca_sampler.get_qca_network()
-problem.draw_qca()
+
+#TODO: Get NetworkX from QCA 
+#problem.draw_qca()
