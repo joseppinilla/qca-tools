@@ -77,24 +77,18 @@ if __name__ == "__main__":
     EXHAUSTIVE = False
 
     benchmarks = []
-    # benchmarks.append('NOT_FT')
-    # benchmarks.append('MAJ5_A')
-    # benchmarks.append('MAJ5_B')
-    # benchmarks.append('MUX')
+    benchmarks.append('NOT_FT')
+    benchmarks.append('MAJ5_A')
+    benchmarks.append('MAJ5_B')
+    benchmarks.append('MUX')
     benchmarks.append('COPLANARX')
 
     # Vector inputs
-    vectors = { 'NOT_FT':[  {'A':-1}, {'A':1}],
-                'MAJ5_A':[  {'A':-1, 'B':-1, 'C':-1, 'D':-1, 'E':-1},
-                            {'A':-1, 'B':-1, 'C':1, 'D':-1, 'E':-1},
-                            {'A':-1, 'B':1, 'C':1, 'D':-1, 'E':1},
-                            {'A':-1, 'B':-1, 'C':1, 'D':-1, 'E':-1}],
-                'MAJ5_B':[  {'A':-1, 'B':-1, 'C':-1, 'D':-1, 'E':-1},
-                            {'A':-1, 'B':-1, 'C':1, 'D':-1, 'E':-1},
-                            {'A':-1, 'B':1, 'C':1, 'D':-1, 'E':1},
-                            {'A':-1, 'B':-1, 'C':1, 'D':-1, 'E':-1}],
-                'MUX':[     {'S':-1,'A':1,'B':-1}, {'S':1,'A':1,'B':-1}],
-                'COPLANARX':[{'A':-1,'X':1}, {'A':1,'X':-1}]
+    vectors = { 'NOT_FT':       [{'A':-1}],
+                'MAJ5_A':       [{'A':-1, 'B':1, 'C':1, 'D':-1, 'E':1}],
+                'MAJ5_B':       [{'A':-1, 'B':1, 'C':1, 'D':-1, 'E':1}],
+                'MUX':          [{'S':-1,'A':1,'B':-1}],
+                'COPLANARX':    [{'A':-1,'X':1}]
             }
 
     for name in benchmarks:

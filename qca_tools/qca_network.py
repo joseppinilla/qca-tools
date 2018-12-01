@@ -126,6 +126,9 @@ class QCANetwork(BinaryQuadraticModel):
         return self.pos
 
 class QCANetworkX(nx.Graph):
+    """ QCADesigner file to NetworkX
+    """
+
     def __init__(self, qca_file=None, full_adj=True, pols={}, ancilla=True):
         QCA = QCANetwork(qca_file, full_adj, pols, ancilla)
         self.QCA =  QCA
@@ -227,5 +230,12 @@ class QCANetworkX(nx.Graph):
 
 
 if __name__ == "__main__":
-    QCA = QCANetworkX('../examples/benchmarks/NOT_FT.qca', ancilla=True)
-    QCA.draw_qca()
+    dir= '../examples/benchmarks/'
+    name = 'SRFlipFlop'
+    filepath = os.path.join(dir, name+'.qca')
+    mm_dir = os.path.join(dir, name)
+    QCAnx = QCANetworkX(filepath, ancilla=True)
+    QCAnx.draw_qca()
+
+    comments = "Source: %s\nPolarizations: %s" % (name, QCAnx.QCA.pols)
+    write_networkx(QCAnx, pos=QCAnx.pos, mtx_name=name, mm_dir=mm_dir, comment=comments)
