@@ -10,10 +10,15 @@ from embedding_methods.utilities.graph_mmio import write_networkx
 from dimod import BinaryQuadraticModel, Vartype
 
 ROUND_VAL = 8
+R_MAX = 2.5
 
 class QCANetwork(BinaryQuadraticModel):
 
-    def __init__(self, qca_file=None, full_adj=True, pols={}, ancilla=True):
+    def __init__(self, qca_file=None,
+                full_adj=True,
+                pols={},
+                ancilla=True,
+                r_max=R_MAX):
 
         # init empty BQM
         BinaryQuadraticModel.__init__(self,{},{},0.0,Vartype.SPIN)
@@ -37,7 +42,7 @@ class QCANetwork(BinaryQuadraticModel):
         if qca_file is None: return
 
         # read qca file
-        cells, spacing, J_mtx = parse_qca_file(qca_file)
+        cells, spacing, J_mtx = parse_qca_file(qca_file, r_max=r_max)
 
         # qca adjacency
         qca_adj = {i: J_mtx[i].nonzero()[0].tolist() for i in range(J_mtx.shape[0])}
@@ -129,8 +134,13 @@ class QCANetworkX(nx.Graph):
     """ QCADesigner file to NetworkX
     """
 
-    def __init__(self, qca_file=None, full_adj=True, pols={}, ancilla=True):
-        QCA = QCANetwork(qca_file, full_adj, pols, ancilla)
+    def __init__(self, qca_file=None,
+                full_adj=True,
+                pols={},
+                ancilla=True,
+                r_max=R_MAX):
+
+        QCA = QCANetwork(qca_file, full_adj, pols, ancilla, r_max)
         self.QCA =  QCA
         self.pos = QCA.qca_layout()
 
@@ -228,14 +238,26 @@ class QCANetworkX(nx.Graph):
     def from_qca_network(cls, QCA):
         self.QCA = QCA
 
-
 if __name__ == "__main__":
-    dir= '../examples/benchmarks/'
-    name = 'SRFlipFlop'
-    filepath = os.path.join(dir, name+'.qca')
-    mm_dir = os.path.join(dir, name)
-    QCAnx = QCANetworkX(filepath, ancilla=True)
-    QCAnx.draw_qca()
 
-    comments = "Source: %s\nPolarizations: %s" % (name, QCAnx.QCA.pols)
-    write_networkx(QCAnx, pos=QCAnx.pos, mtx_name=name, mm_dir=mm_dir, comment=comments)
+    dir= '../examples/benchmarks/'
+
+    benchmarks = []
+    benchmarks.append('4BITACCUM')
+    benchmarks.append('4BITMUX')
+    benchmarks.append('SERADD')
+    benchmarks.append('LOOPMEMCELL')
+    benchmarks.append('FULLADD')
+    benchmarks.append('XOR')
+    benchmarks.append('SELOSC')
+    benchmarks.append('SRFlipFlop')
+
+    for name in benchmarks:
+        filepath = os.path.join(dir, name+'.qca')
+        mm_dir = os.path.join(dir, name)
+        R_MAX = 2.1 #2.5
+        QCAnx = QCANetworkX(filepath, ancilla=True, r_max=R_MAX)
+        QCAnx.draw_qca()
+
+        comments = "Source: %s\nPolarizations: %s" % (name, QCAnx.QCA.pols)
+        write_networkx(QCAnx, pos=QCAnx.pos, mtx_name=name, mm_dir=mm_dir, comment=comments)

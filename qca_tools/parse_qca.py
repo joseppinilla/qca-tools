@@ -34,7 +34,7 @@ CELL_MODES = {'QCAD_CELL_MODE_NORMAL': 0,
               'QCAD_CELL_MODE_VERTICAL': 2,
               'QCAD_CELL_MODE_CLUSTER': 3}
 
-R_MAX = 2.5         # max cell-cell interaction range (rel to grid spacing)
+R_MAX = 2.1         # max cell-cell interaction range (rel to grid spacing)
 EK_THRESH = 1e-3    # threshold for included Ek, relative to max(abs(Ek))
 X_ROUND = 4         # places to round to when deciding if cell is rotated
 
@@ -253,120 +253,6 @@ def build_J(cells, spacing, r_max=R_MAX):
 
     return J
 
-def zone_cells(cells, spacing, show=False):
-    '''Split cells into clock zones. Distinguishes disjoint zones with the
-    same zone index'''
-
-    N = len(cells)  # number of cells
-
-    # construct connectivity matrix
-    J = np.zeros([N, N], dtype=float)
-    DR = R_MAX*spacing
-    for i in xrange(N-1):
-        for j in xrange(i+1, N):
-            Ek = getEk(cells[i], cells[j], DR=DR)
-            if Ek:
-                J[i, j] = Ek
-                J[j, i] = Ek
-
-    # remove very weak interactions
-    J = J * (np.abs(J) >= np.max(np.abs(J)*EK_THRESH))
-
-    # make full cell connectivity Graph
-    G = nx.Graph(J)
-
-#    if show:
-#        plt.figure(0)
-#        plt.clf()
-#        nx.draw_graphviz(G)
-#        plt.show()
-
-    # get indices for each clock index
-    clk = [cell['clk'] for cell in cells]
-    clk_ind = list(set(clk))    # will sort by default
-    inds = [[i for i, x in enumerate(clk) if x == ind] for ind in clk_ind]
-
-    # split graph into sub-graphs with the same clock indices
-    sub_G = {ind: G.subgraph(inds[ind]) for ind in clk_ind}
-
-    # split disconnected components for each label graph
-    sub_ind = {ind: list(nx.connected_components(sub_G[ind]))
-               for ind in clk_ind}
-
-    ## find zone order
-
-    # create abstract zone connectivity graph
-    G = nx.DiGraph()
-    # nodes
-    for clk in clk_ind:
-        for i in xrange(len(sub_ind[clk])):
-            key = (clk, i)
-            G.add_node(key, inds=sub_ind[clk][i])
-    # edges
-    for clk in clk_ind:
-        adj_clk = 3 if clk == 0 else clk-1
-        if not adj_clk in sub_ind:
-            continue
-        for i in xrange(len(sub_ind[clk])):
-            k1 = (clk, i)
-            for j in xrange(len(sub_ind[adj_clk])):
-                k2 = (adj_clk, j)
-                if np.any(J[G.node[k1]['inds'], :][:, G.node[k2]['inds']]):
-                    G.add_edge(k2, k1)
-
-#    if show:
-#        plt.figure(1)
-#        plt.clf()
-#        nx.draw_graphviz(G)
-#        plt.show()
-
-    # find input nodes, have no predecessors
-    predecs = {n: len(G.predecessors(n)) for n in G.nodes_iter()}
-    inputs = [ky for ky, val in predecs.iteritems() if val == 0]
-
-    # expand from inputs
-    visited = {key: False for key in G.nodes()}
-    nodes = inputs
-    order = [nodes]
-    while nodes:
-        new_nodes = set()
-        for node in nodes:
-            new_nodes.update(G.successors(node))
-            visited[node] = True
-        # remove already visited nodes from new nodes
-        new_nodes = [node for node in new_nodes if not visited[node]]
-        nodes = new_nodes
-        if nodes:
-            order.append(nodes)
-
-    # find feedback interactions
-    feedback = {}
-    for n in G.nodes_iter():
-        for p in G.predecessors(n):
-            pshell = 0
-            nshell = 0
-            pzone = 0
-            nzone = 0
-            for shell in order:
-                if p in shell:
-                    pshell = order.index(shell)
-                    pzone = shell.index(p)
-                if n in shell:
-                    nshell = order.index(shell)
-                    nzone = shell.index(n)
-            if pshell > nshell:
-                if (pshell,pzone) in feedback:
-                    feedback[(pshell,pzone)].append((nshell,nzone))
-                else:
-                    feedback[(pshell,pzone)] =  [(nshell,nzone)]
-
-    # reformat order list to contain zone indices
-    form_func = lambda n: sub_ind[n[0]][n[1]]
-    order = [[form_func(zone) for zone in shell] for shell in order]
-
-    return order, J, feedback
-
-
 def reorder_cells(cells, J):
     '''Renumber cells by position rather than the default QCADesigner placement
     order. Cells ordered by the tuple (zone, y, x)'''
@@ -392,7 +278,7 @@ def reorder_cells(cells, J):
 
 ## MAIN FUNCTION
 
-def parse_qca_file(fn, verbose=False):
+def parse_qca_file(fn, r_max=R_MAX, verbose=False):
     '''Parse a QCADesigner file to extract cell properties. Returns an ordered
     list of cells, the QCADesigner grid spacing in nm, a list structure of the
     indices of each clock zone (propogating from inputs), and a coupling matrix
@@ -409,7 +295,7 @@ def parse_qca_file(fn, verbose=False):
         print('Parsed QCA file...')
 
     # construct J matrix
-    J = build_J(cells, spacing)
+    J = build_J(cells, spacing, r_max=r_max)
 
     # reorder cells by zone and position
     cells, J = reorder_cells(cells, J)
