@@ -3,7 +3,6 @@
 """
 
 from qca_tools import QCAComposite
-#from qca_tools.drawing import draw_qca
 from dimod.reference.samplers import ExactSolver
 
 bench_dir = '../examples/benchmarks/'
@@ -20,8 +19,7 @@ response = qca_sampler.sample()
 # First Energy level is the ground state, only because it's the exact solution
 ground_state, energy, _ = response.first
 
-# Draw QCA Network with solution state
-problem = qca_sampler.get_qca_network()
-
-#TODO: Get NetworkX from QCA 
-#problem.draw_qca()
+# Plot Energies
+energies = [datum.energy for datum in response.data()]
+_ = plt.hist(energies, bins=100)
+plt.show()

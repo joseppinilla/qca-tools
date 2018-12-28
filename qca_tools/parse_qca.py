@@ -303,7 +303,8 @@ def parse_qca_file(fn, r_max=R_MAX, verbose=False):
     return cells, spacing, J
 
 if __name__ == "__main__":
-    bench_dir = './benchmarks/'
-    fn = 'S_R_Flip_Flop.qca'
+    bench_dir = '../examples/benchmarks/'
+    fn = 'NOT_FT.qca'
 
+    build_hierarchy(bench_dir+fn)
     parse_qca_file(bench_dir+fn)

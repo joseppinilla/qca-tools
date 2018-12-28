@@ -10,9 +10,13 @@ from embedding_methods.utilities.graph_mmio import write_networkx
 from dimod import BinaryQuadraticModel, Vartype
 
 ROUND_VAL = 8
-R_MAX = 2.5
+R_MAX = 2.1
+
+__all__ = ['QCANetwork', 'QCANetworkX']
 
 class QCANetwork(BinaryQuadraticModel):
+    """ Load from a *.qca file and generate the adjacency matrix.
+    """
 
     def __init__(self, qca_file=None,
                 full_adj=True,
@@ -131,16 +135,10 @@ class QCANetwork(BinaryQuadraticModel):
         return self.pos
 
 class QCANetworkX(nx.Graph):
-    """ QCADesigner file to NetworkX
+    """ QCANetwork to NetworkX
     """
 
-    def __init__(self, qca_file=None,
-                full_adj=True,
-                pols={},
-                ancilla=True,
-                r_max=R_MAX):
-
-        QCA = QCANetwork(qca_file, full_adj, pols, ancilla, r_max)
+    def __init__(self, QCA):
         self.QCA =  QCA
         self.pos = QCA.qca_layout()
 
@@ -150,12 +148,34 @@ class QCANetworkX(nx.Graph):
         for edge, val in QCA.quadratic.items():
             self.add_edge(*edge, weight=val)
 
+    def draw_qca(self, with_cmap=False, with_labels=False,
+                with_biases=False, with_weights=False,
+                scale=2.0, edge_width=2.0):
+        """ Draw the QCA layout with heatcolored edges between adjacent cells
 
-    def draw_qca(self, with_biases=False, with_weights=False):
+        Note: node_size is constructed from the cell's size and scale
+        Default scale: nanometers
+        Default cell size: 18x18(nm)
 
-        QCA = self.QCA
-        pos = self.pos
+        Args (optional):
 
+            with_cmap (bool, default=False): Add colormap legend for edge weights.
+
+            with_biases (bool, default=False): Overlay bias numbers on top of
+                nodes. Not recommended for good visibility.
+
+            with_weights (bool, default=False): Overlay weight numbers on top of
+                edges. Not recommended for good visibility.
+
+            scale (float, default=2.0): A value of 2 is used to scale the layout
+                size so that cells are distinguishable in a *.png exported file.
+
+            edge_width (float, default=2.0): Configurable width of edges between
+                adjacent cells.
+
+        """
+
+        # Plot setup
         try:
             import matplotlib.pyplot as plt
         except ImportError:
@@ -163,80 +183,107 @@ class QCANetworkX(nx.Graph):
         except RuntimeError:
             print("Matplotlib unable to open display")
             raise
+        fig, ax = plt.subplots()
+        ax.autoscale()
 
-        cf = plt.gcf()
-        ax = cf.gca()
+        # Dimensions setup
+        QCA = self.QCA
+        pos = {k:(scale*x, scale*y) for k,(x,y) in QCA.pos.items()}
+        spacing = scale*QCA.spacing
+        node_size = (spacing*72./fig.dpi)**2
+        node_shape = markers.MarkerStyle(marker='$\u2683$')
 
-        # draw nodes
+        # Set drawing parameters
         deg0_cells = [cell['num'] for cell in QCA.cells if not cell['rot']]
+        deg45_cells = [cell['num'] for cell in QCA.cells if cell['rot']]
+        weights = nx.get_edge_attributes(self,'weight')
+
         deg0_color = []
         for cell in deg0_cells:
             if cell in QCA.drivers:
                 deg0_color.append('blue')
             elif cell in QCA.outputs:
-                deg0_color.append('yellow')
+                deg0_color.append('peru')
             elif cell in QCA.fixed:
                 deg0_color.append('orange')
             elif cell in QCA.normal:
                 deg0_color.append('green')
 
-        deg45_cells = [cell['num'] for cell in QCA.cells if cell['rot']]
+
         deg45_color = []
         for cell in deg45_cells:
             if cell in QCA.drivers:
                 deg45_color.append('blue')
             elif cell in QCA.outputs:
-                deg45_color.append('yellow')
+                deg45_color.append('peru')
             elif cell in QCA.fixed:
                 deg45_color.append('orange')
             elif cell in QCA.normal:
                 deg45_color.append('green')
 
+        # Draw nodes
         node_params = { 'pos': pos,
-                        'with_labels': True,
-                        'node_size': QCA.spacing*100
-                        }
+                        'with_labels': with_labels,
+                        'node_size': node_size}
 
-        if with_biases:
-            params['labels'] = {v:weights[v,v] for v in self}
-
-        node_shape = markers.MarkerStyle(marker='$\u2683$')
-        nx.draw_networkx_nodes( deg0_cells,
+        nx.draw_networkx_nodes(self, nodelist=deg0_cells,
                                 node_color=deg0_color,
                                 node_shape=node_shape,
                                 **node_params)
         node_shape._transform = node_shape.get_transform().rotate_deg(45)
-        nx.draw_networkx_nodes( deg45_cells,
+        nx.draw_networkx_nodes(self, nodelist=deg45_cells,
                                 node_color=deg45_color,
                                 node_shape=node_shape,
                                 **node_params)
 
-        # draw edges
-        weights = nx.get_edge_attributes(self,'weight')
+        # Node labels
+        if with_labels:
+            if with_biases:
+                node_labels = {v:weights[v,v] for v in self}
+            else:
+                node_labels = {v:v for v in self}
+            nx.draw_networkx_labels(self, pos=pos, labels=node_labels)
+
+        # Use scaled dim of drawing to set figure size
+        xmin,xmax = plt.xlim()
+        ymin,ymax = plt.ylim()
+        xdim = (xmax-xmin+spacing)/fig.dpi
+        ydim = (ymax-ymin+spacing)/fig.dpi
+        fig.set_size_inches(xdim, ydim)
+
+        # Draw edges
         edge_color = list(weights.values())
         edge_vmin = min(QCA.quadratic.values())
         edge_vmax = max(QCA.quadratic.values())
         edge_params = { 'pos': pos,
-                        'width': 4,
+                        'width': edge_width,
                         'edge_color': edge_color,
                         'edge_cmap': plt.cm.RdBu,
                         'edge_vmin': edge_vmin,
-                        'edge_vmax': edge_vmax
+                        'edge_vmax': edge_vmax,
+                        'alpha': 0.5
                         }
+        lc = nx.draw_networkx_edges(self, **edge_params)
 
-        nx.draw_networkx_edges(self, **edge_params)
+        # Use NetworkX LineCollection to generate a colormap legend
+        if with_cmap:
+            plt.colorbar(lc)
 
-
+        # Weigh labels
         if with_weights:
             edge_labels = {(u,v):weights[u,v] for u,v in weights if u!=v}
-            _ = nx.draw_networkx_edge_labels(self, pos=pos, edge_labels=edge_labels)
+            _ = nx.draw_networkx_edge_labels(self,
+                                        pos=pos, edge_labels=edge_labels)
 
         ax.set_axis_off()
         ax.invert_yaxis()
 
     @classmethod
-    def from_qca_network(cls, QCA):
-        self.QCA = QCA
+    def from_qca_file(cls, qca_file=None, full_adj=True, pols={}, ancilla=True,
+                    r_max=R_MAX):
+
+        QCA = QCANetwork(qca_file, full_adj, pols, ancilla, r_max)
+        return cls(QCA)
 
 if __name__ == "__main__":
 
@@ -255,7 +302,7 @@ if __name__ == "__main__":
     for name in benchmarks:
         filepath = os.path.join(dir, name+'.qca')
         mm_dir = os.path.join(dir, name)
-        R_MAX = 2.1 #2.5
+        R_MAX = 2.5
         QCAnx = QCANetworkX(filepath, ancilla=True, r_max=R_MAX)
         QCAnx.draw_qca()
 

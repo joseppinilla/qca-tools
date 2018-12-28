@@ -2,15 +2,17 @@ import dimod
 from os.path import isfile
 from qca_tools.qca_network import QCANetwork
 
+R_MAX = 2.1
+
 class QCAComposite(dimod.ComposedSampler):
 
-    def __init__(self, child_sampler, qca_filename, pols={}, use_ancilla=True):
+    def __init__(self, child_sampler, qca_filename, pols={}, use_ancilla=True, r_max=R_MAX):
         if not isfile(qca_filename):
             raise ValueError("QCA input file not found")
         self._qca_filename = qca_filename
         self._use_ancilla = use_ancilla
         self._children = [child_sampler]
-        self._QCA = QCANetwork(qca_filename)
+        self._QCA = QCANetwork(qca_filename,r_max=r_max)
 
     @property
     def children(self):
